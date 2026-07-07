@@ -90,12 +90,23 @@ The screener is only known after the signal day closes, so entering on the same 
 Default:
 
 ```text
-hold_days = 5
-exit_date = 5 trading days after signal date
-exit_price = exit_date close
+take_profit = 8%
+stop_loss = 4%
+max_hold_days = 5 trading days after signal date
 ```
 
-This matches the repo objective of testing roughly one-week swing trades.
+The backtest checks each daily candle after entry:
+
+```text
+1. If open <= stop loss, exit at open.
+2. Else if open >= take profit, exit at open.
+3. Else if high touches take profit and low touches stop loss on the same day, exit at stop loss.
+4. Else if low touches stop loss, exit at stop loss.
+5. Else if high touches take profit, exit at take profit.
+6. Else exit at close after max_hold_days.
+```
+
+The same-day TP/SL conflict rule is intentionally conservative because daily OHLCV cannot tell whether the high or low happened first.
 
 ## Overlap Rule
 
@@ -119,6 +130,7 @@ return_pct = return * 100
 max_gain_pct = highest high during holding window / entry_price - 1
 max_loss_pct = lowest low during holding window / entry_price - 1
 win = return > 0
+exit_reason = take_profit, stop_loss, both_hit_stop_loss_first, or time_exit
 ```
 
 The trade row also stores signal context:
@@ -182,8 +194,6 @@ slippage
 bid/ask spread
 position sizing
 portfolio cash constraints
-stop loss
-take profit
 market regime filter
 ```
 

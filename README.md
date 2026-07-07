@@ -205,7 +205,10 @@ Backtest defaults:
 
 ```text
 entry: next trading day open after signal
-exit: close 5 trading days after signal
+take profit: 8%
+stop loss: 4%
+same-day TP/SL conflict: stop loss first
+fallback exit: close 5 trading days after signal
 overlapping trades per symbol: disabled
 transaction costs: not included
 slippage: not included

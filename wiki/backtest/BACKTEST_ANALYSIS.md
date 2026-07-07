@@ -18,6 +18,9 @@ Signal sample:
 signal_date range: 2026-02-03 to 2026-06-30
 latest data date: 2026-07-07
 holding period: 5 trading days
+take profit: 8%
+stop loss: 4%
+same-day TP/SL conflict: stop loss first
 overlapping trades per symbol: disabled
 ```
 
@@ -31,12 +34,23 @@ data/reports/swing/backtest_summary_swing_2026-07-07_5d.csv
 
 ```text
 trades: 666
-win_rate: 30.03%
-average_return: -3.51%
-median_return: -3.05%
-best_trade: 105.77%
-worst_trade: -55.50%
-profit_factor: 0.49
+win_rate: 22.97%
+average_return: -1.48%
+median_return: -4.00%
+best_trade: 25.93%
+worst_trade: -15.19%
+profit_factor: 0.51
+```
+
+Exit reasons:
+
+```text
+stop_loss: 352
+time_exit: 106
+take_profit: 97
+both_hit_stop_loss_first: 73
+stop_loss_open: 29
+take_profit_open: 9
 ```
 
 ## By Score
@@ -50,16 +64,16 @@ data/reports/swing/backtest_by_score_swing_2026-07-07_5d.csv
 ```text
 score 7:
 trades: 120
-win_rate: 33.33%
-average_return: -3.54%
-median_return: -2.58%
-profit_factor: 0.48
+win_rate: 25.83%
+average_return: -1.13%
+median_return: -4.00%
+profit_factor: 0.62
 
 score 6:
 trades: 546
-win_rate: 29.30%
-average_return: -3.51%
-median_return: -3.32%
+win_rate: 22.34%
+average_return: -1.55%
+median_return: -4.00%
 profit_factor: 0.49
 ```
 
@@ -74,7 +88,7 @@ win rate is low
 average return is negative
 median return is negative
 profit factor is below 1
-score 7 does not materially outperform score 6
+many trades hit stop loss before take profit
 ```
 
 The conclusion is not that the data pipeline is wrong. The useful conclusion is that the current screener rule is too loose or incomplete for a one-week swing strategy.
@@ -95,12 +109,23 @@ data/reports/macd/backtest_summary_macd_2026-07-07_5d.csv
 
 ```text
 trades: 207
-win_rate: 26.57%
-average_return: -6.10%
-median_return: -5.70%
-best_trade: 54.05%
-worst_trade: -55.50%
-profit_factor: 0.31
+win_rate: 14.98%
+average_return: -2.23%
+median_return: -4.00%
+best_trade: 9.69%
+worst_trade: -7.35%
+profit_factor: 0.33
+```
+
+Exit reasons:
+
+```text
+stop_loss: 139
+take_profit: 24
+both_hit_stop_loss_first: 24
+time_exit: 13
+stop_loss_open: 4
+take_profit_open: 3
 ```
 
 By score:
@@ -108,17 +133,17 @@ By score:
 ```text
 score 8:
 trades: 68
-win_rate: 29.41%
-average_return: -5.43%
-median_return: -5.76%
-profit_factor: 0.36
+win_rate: 16.18%
+average_return: -1.99%
+median_return: -4.00%
+profit_factor: 0.38
 
 score 7:
 trades: 139
-win_rate: 25.18%
-average_return: -6.43%
-median_return: -5.70%
-profit_factor: 0.28
+win_rate: 14.39%
+average_return: -2.35%
+median_return: -4.00%
+profit_factor: 0.31
 ```
 
 Current latest MACD candidates:
@@ -145,7 +170,7 @@ Possible issues:
 ```text
 entries may be too late after the move
 volume spike may mark exhaustion instead of continuation
-no stop loss or take profit is used
+conservative stop loss is hit more often than take profit
 market-wide condition is ignored
 all candidates are treated equally
 low-priced volatile stocks may dominate signals
@@ -169,11 +194,12 @@ Test different holding periods:
 10 trading days
 ```
 
-Test stop loss / take profit:
+Compare nearby stop loss / take profit assumptions in code:
 
 ```text
-stop loss: -5%
-take profit: +8%
+take profit 6%, stop loss 3%
+take profit 8%, stop loss 4%
+take profit 10%, stop loss 5%
 ```
 
 Test liquidity thresholds:

@@ -11,6 +11,8 @@ from paths import PROCESSED_DIR, reports_dir
 
 DEFAULT_HOLD_DAYS = 5
 DEFAULT_ALLOW_OVERLAP = False
+DEFAULT_TAKE_PROFIT_PCT = 0.08
+DEFAULT_STOP_LOSS_PCT = 0.04
 STRATEGIES = {
     "swing": {
         "input_pattern": "ihsg_swing_indicators_*.csv",
@@ -23,6 +25,39 @@ STRATEGIES = {
         "strategy_name": "macd",
     },
 }
+
+
+def resolve_exit(
+    exit_window: pd.DataFrame,
+    entry_price: float,
+    take_profit_pct: float,
+    stop_loss_pct: float,
+) -> tuple[pd.Series, float, str, int]:
+    take_profit_price = entry_price * (1 + take_profit_pct)
+    stop_loss_price = entry_price * (1 - stop_loss_pct)
+
+    for holding_days, (_, row) in enumerate(exit_window.iterrows(), start=1):
+        open_price = float(row["open"])
+        high_price = float(row["high"])
+        low_price = float(row["low"])
+
+        if open_price <= stop_loss_price:
+            return row, open_price, "stop_loss_open", holding_days
+        if open_price >= take_profit_price:
+            return row, open_price, "take_profit_open", holding_days
+
+        take_profit_hit = high_price >= take_profit_price
+        stop_loss_hit = low_price <= stop_loss_price
+
+        if take_profit_hit and stop_loss_hit:
+            return row, stop_loss_price, "both_hit_stop_loss_first", holding_days
+        if stop_loss_hit:
+            return row, stop_loss_price, "stop_loss", holding_days
+        if take_profit_hit:
+            return row, take_profit_price, "take_profit", holding_days
+
+    exit_row = exit_window.iloc[-1]
+    return exit_row, float(exit_row["close"]), "time_exit", len(exit_window)
 
 
 def latest_indicator_file(pattern: str = "ihsg_swing_indicators_*.csv") -> Path:
@@ -48,7 +83,14 @@ def max_drawdown(returns: pd.Series) -> float:
     return float(drawdown.min())
 
 
-def build_trades(indicators: pd.DataFrame, hold_days: int, allow_overlap: bool, signal_column: str) -> pd.DataFrame:
+def build_trades(
+    indicators: pd.DataFrame,
+    hold_days: int,
+    allow_overlap: bool,
+    signal_column: str,
+    take_profit_pct: float,
+    stop_loss_pct: float,
+) -> pd.DataFrame:
     required_columns = {
         "date",
         "symbol",
@@ -93,13 +135,17 @@ def build_trades(indicators: pd.DataFrame, hold_days: int, allow_overlap: bool, 
 
             entry_row = symbol_data.iloc[entry_index]
             exit_window = symbol_data.iloc[entry_index : exit_index + 1]
-            exit_row = symbol_data.iloc[exit_index]
 
             entry_price = float(entry_row["open"])
-            exit_price = float(exit_row["close"])
             if entry_price <= 0:
                 continue
 
+            exit_row, exit_price, exit_reason, holding_days = resolve_exit(
+                exit_window=exit_window,
+                entry_price=entry_price,
+                take_profit_pct=take_profit_pct,
+                stop_loss_pct=stop_loss_pct,
+            )
             trade_return = exit_price / entry_price - 1
             max_gain = float(exit_window["high"].max() / entry_price - 1)
             max_loss = float(exit_window["low"].min() / entry_price - 1)
@@ -110,9 +156,15 @@ def build_trades(indicators: pd.DataFrame, hold_days: int, allow_overlap: bool, 
                     "signal_date": signal_row["date"].strftime("%Y-%m-%d"),
                     "entry_date": entry_row["date"].strftime("%Y-%m-%d"),
                     "exit_date": exit_row["date"].strftime("%Y-%m-%d"),
-                    "holding_days": hold_days,
+                    "holding_days": holding_days,
+                    "max_holding_days": hold_days,
+                    "exit_reason": exit_reason,
                     "entry_price": entry_price,
                     "exit_price": exit_price,
+                    "take_profit_price": entry_price * (1 + take_profit_pct),
+                    "stop_loss_price": entry_price * (1 - stop_loss_pct),
+                    "take_profit_pct": take_profit_pct * 100,
+                    "stop_loss_pct": stop_loss_pct * 100,
                     "return": trade_return,
                     "return_pct": trade_return * 100,
                     "max_gain_pct": max_gain * 100,
@@ -231,6 +283,8 @@ def run_backtest(strategy_key: str) -> None:
         hold_days=DEFAULT_HOLD_DAYS,
         allow_overlap=DEFAULT_ALLOW_OVERLAP,
         signal_column=signal_column,
+        take_profit_pct=DEFAULT_TAKE_PROFIT_PCT,
+        stop_loss_pct=DEFAULT_STOP_LOSS_PCT,
     )
     summary = summarize(trades)
     by_symbol = summarize_by_symbol(trades)
