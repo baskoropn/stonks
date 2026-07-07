@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse
 from pathlib import Path
 
 import pandas as pd
 
+from paths import PROCESSED_DIR, RAW_DIR, reports_dir
+from screener_defaults import (
+    DEFAULT_LIQUIDITY,
+    DEFAULT_SWING_HIGH_DISTANCE,
+    DEFAULT_SWING_MIN_SCORE,
+    DEFAULT_VOLUME_RATIO,
+)
 
-ROOT = Path(__file__).resolve().parents[1]
-RAW_DIR = ROOT / "data" / "raw"
-PROCESSED_DIR = ROOT / "data" / "processed"
-REPORTS_DIR = ROOT / "data" / "reports" / "swing"
 
-DEFAULT_LIQUIDITY = 1_000_000_000
-DEFAULT_VOLUME_RATIO = 1.5
-DEFAULT_HIGH_DISTANCE = 0.97
-DEFAULT_MIN_SCORE = 6
+REPORTS_DIR = reports_dir("swing")
 
 
 def latest_raw_file() -> Path:
@@ -121,26 +120,16 @@ def add_indicators(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build one-week swing trading indicators from raw IHSG OHLCV data.")
-    parser.add_argument("--input", type=Path, default=None, help="raw OHLCV CSV; default: latest file in data/raw")
-    parser.add_argument("--min-liquidity", type=float, default=DEFAULT_LIQUIDITY)
-    parser.add_argument("--min-volume-ratio", type=float, default=DEFAULT_VOLUME_RATIO)
-    parser.add_argument("--high-distance", type=float, default=DEFAULT_HIGH_DISTANCE)
-    parser.add_argument("--min-score", type=int, default=DEFAULT_MIN_SCORE)
-    parser.add_argument("--allow-illiquid", action="store_true", help="do not require avg_value_20d liquidity filter")
-    parser.add_argument("--allow-low-volume", action="store_true", help="do not require volume_ratio filter")
-    args = parser.parse_args()
-
-    raw_path = args.input or latest_raw_file()
+    raw_path = latest_raw_file()
     prices = pd.read_csv(raw_path)
     indicators = add_indicators(
         prices,
-        min_liquidity=args.min_liquidity,
-        min_volume_ratio=args.min_volume_ratio,
-        high_distance=args.high_distance,
-        min_score=args.min_score,
-        require_liquidity=not args.allow_illiquid,
-        require_volume=not args.allow_low_volume,
+        min_liquidity=DEFAULT_LIQUIDITY,
+        min_volume_ratio=DEFAULT_VOLUME_RATIO,
+        high_distance=DEFAULT_SWING_HIGH_DISTANCE,
+        min_score=DEFAULT_SWING_MIN_SCORE,
+        require_liquidity=True,
+        require_volume=True,
     )
 
     latest_date = indicators["date"].max()

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse
 import csv
 import re
 import warnings
@@ -16,11 +15,15 @@ from zipfile import ZipFile
 import pandas as pd
 import yfinance as yf
 
+from paths import RAW_DIR, ROOT, UNIVERSE_DIR, reports_dir
 
-ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_EXCEL = ROOT / "Daftar Saham  - 20260707.xlsx"
 DEFAULT_START = "2026-01-01"
 DEFAULT_END = (date.today() + timedelta(days=1)).isoformat()
+DEFAULT_CHUNK_SIZE = 75
+DEFAULT_THREADS = 8
+DEFAULT_SLEEP = 1.0
+DEFAULT_REPAIR = False
 
 XLSX_NS = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 
@@ -124,62 +127,36 @@ def main() -> None:
     warnings.filterwarnings("ignore", category=FutureWarning)
     warnings.filterwarnings("ignore", message=".*Timestamp.utcnow.*")
 
-    parser = argparse.ArgumentParser(
-        description=(
-            "Download daily OHLCV for IDX stocks from 2026-01-01 through today "
-            "when no date parameters are provided."
-        )
-    )
-    parser.add_argument("--excel", type=Path, default=DEFAULT_EXCEL)
-    parser.add_argument(
-        "--start",
-        default=DEFAULT_START,
-        help=f"inclusive start date, default: {DEFAULT_START}",
-    )
-    parser.add_argument(
-        "--end",
-        default=DEFAULT_END,
-        help=(
-            "exclusive end date for yfinance; default is tomorrow so today's "
-            "available data is included"
-        ),
-    )
-    parser.add_argument("--chunk-size", type=int, default=75)
-    parser.add_argument("--threads", type=int, default=8)
-    parser.add_argument("--sleep", type=float, default=1.0)
-    parser.add_argument("--repair", action="store_true")
-    args = parser.parse_args()
-
-    stocks = read_idx_excel(args.excel)
+    stocks = read_idx_excel(DEFAULT_EXCEL)
     symbols = [stock.yahoo_symbol for stock in stocks]
-    print(f"Loaded {len(symbols)} stock symbols from {args.excel.name}")
+    print(f"Loaded {len(symbols)} stock symbols from {DEFAULT_EXCEL.name}")
 
-    universe_path = ROOT / "data" / "universe" / "idx_equities_20260707.csv"
+    universe_path = UNIVERSE_DIR / "idx_equities_20260707.csv"
     write_universe(stocks, universe_path)
 
     downloaded: list[pd.DataFrame] = []
-    for batch_no, batch in enumerate(chunks(symbols, args.chunk_size), start=1):
+    for batch_no, batch in enumerate(chunks(symbols, DEFAULT_CHUNK_SIZE), start=1):
         print(f"Downloading batch {batch_no}: {len(batch)} symbols")
         frame = yf.download(
             batch,
-            start=args.start,
-            end=args.end,
+            start=DEFAULT_START,
+            end=DEFAULT_END,
             interval="1d",
             group_by="ticker",
             auto_adjust=False,
             actions=True,
-            repair=args.repair,
-            threads=args.threads,
+            repair=DEFAULT_REPAIR,
+            threads=DEFAULT_THREADS,
             progress=False,
             timeout=30,
         )
         flat = flatten_prices(frame)
         if not flat.empty:
             downloaded.append(flat)
-        sleep(args.sleep)
+        sleep(DEFAULT_SLEEP)
 
     prices = pd.concat(downloaded, ignore_index=True) if downloaded else pd.DataFrame()
-    prices_path = ROOT / "data" / "raw" / f"ihsg_prices_{args.start}_{args.end}_daily.csv"
+    prices_path = RAW_DIR / f"ihsg_prices_{DEFAULT_START}_{DEFAULT_END}_daily.csv"
     prices_path.parent.mkdir(parents=True, exist_ok=True)
     prices.to_csv(prices_path, index=False)
 
@@ -191,7 +168,7 @@ def main() -> None:
         }
     )
     status["downloaded"] = status["price_rows"] > 0
-    status_path = ROOT / "data" / "reports" / "download" / f"ihsg_download_status_{args.start}_{args.end}.csv"
+    status_path = reports_dir("download") / f"ihsg_download_status_{DEFAULT_START}_{DEFAULT_END}.csv"
     status_path.parent.mkdir(parents=True, exist_ok=True)
     status.to_csv(status_path, index=False)
 

@@ -151,27 +151,7 @@ indicators.sh     -> data/processed + screener candidate reports
 backtest.sh       -> backtest reports
 ```
 
-## Custom Date Range
-
-`yfinance` treats `end` as exclusive. To include `2026-07-08`, pass `--end 2026-07-09`.
-
-```bash
-bash download_ohlcv.sh --start 2026-01-01 --end 2026-07-09
-```
-
-## Useful Parameters
-
-Download smaller batches if Yahoo starts timing out:
-
-```bash
-bash download_ohlcv.sh --chunk-size 50
-```
-
-Use more or fewer download threads:
-
-```bash
-bash download_ohlcv.sh --threads 4
-```
+## Available Commands
 
 Build indicators:
 
@@ -179,12 +159,6 @@ Build indicators:
 bash indicators.sh --swing
 bash indicators.sh --macd
 bash indicators.sh --all
-```
-
-Build swing indicators with stricter liquidity:
-
-```bash
-bash indicators.sh --swing --min-liquidity 5000000000
 ```
 
 Backtest:
@@ -195,21 +169,12 @@ bash backtest.sh --macd
 bash backtest.sh --all
 ```
 
-Run a different holding period:
+The shell scripts call the Python implementation under `scripts/`. The public command surface is intentionally small:
 
-```bash
-bash backtest.sh --swing --hold-days 3
-```
-
-The shell scripts call the Python implementation under `scripts/`. You can still run the Python scripts directly for development:
-
-```bash
-./venv/bin/python scripts/build_swing_indicators.py
-./venv/bin/python scripts/build_macd_indicators.py
-./venv/bin/python scripts/backtest.py \
-  --input-pattern "ihsg_swing_indicators_*.csv" \
-  --signal-column swing_candidate \
-  --strategy-name swing
+```text
+download_ohlcv.sh accepts no parameters
+indicators.sh accepts --swing, --macd, or --all
+backtest.sh accepts --swing, --macd, or --all
 ```
 
 ## Current Defaults

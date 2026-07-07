@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse
 from pathlib import Path
 
 import pandas as pd
 
+from paths import PROCESSED_DIR, RAW_DIR, reports_dir
+from screener_defaults import (
+    DEFAULT_LIQUIDITY,
+    DEFAULT_MIN_SCORE,
+    DEFAULT_RSI_MAX,
+    DEFAULT_RSI_MIN,
+    DEFAULT_VOLUME_RATIO,
+)
 
-ROOT = Path(__file__).resolve().parents[1]
-RAW_DIR = ROOT / "data" / "raw"
-PROCESSED_DIR = ROOT / "data" / "processed"
-REPORTS_DIR = ROOT / "data" / "reports" / "macd"
 
-DEFAULT_LIQUIDITY = 1_000_000_000
-DEFAULT_VOLUME_RATIO = 1.5
-DEFAULT_MIN_SCORE = 7
-DEFAULT_RSI_MIN = 45
-DEFAULT_RSI_MAX = 75
+REPORTS_DIR = reports_dir("macd")
 
 
 def latest_raw_file() -> Path:
@@ -152,24 +151,15 @@ def add_macd_indicators(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build MACD golden-cross screener indicators from raw IHSG OHLCV data.")
-    parser.add_argument("--input", type=Path, default=None, help="raw OHLCV CSV; default: latest file in data/raw")
-    parser.add_argument("--min-liquidity", type=float, default=DEFAULT_LIQUIDITY)
-    parser.add_argument("--min-volume-ratio", type=float, default=DEFAULT_VOLUME_RATIO)
-    parser.add_argument("--min-score", type=int, default=DEFAULT_MIN_SCORE)
-    parser.add_argument("--rsi-min", type=float, default=DEFAULT_RSI_MIN)
-    parser.add_argument("--rsi-max", type=float, default=DEFAULT_RSI_MAX)
-    args = parser.parse_args()
-
-    raw_path = args.input or latest_raw_file()
+    raw_path = latest_raw_file()
     prices = pd.read_csv(raw_path)
     indicators = add_macd_indicators(
         prices,
-        min_liquidity=args.min_liquidity,
-        min_volume_ratio=args.min_volume_ratio,
-        min_score=args.min_score,
-        rsi_min=args.rsi_min,
-        rsi_max=args.rsi_max,
+        min_liquidity=DEFAULT_LIQUIDITY,
+        min_volume_ratio=DEFAULT_VOLUME_RATIO,
+        min_score=DEFAULT_MIN_SCORE,
+        rsi_min=DEFAULT_RSI_MIN,
+        rsi_max=DEFAULT_RSI_MAX,
     )
 
     latest_date = indicators["date"].max()

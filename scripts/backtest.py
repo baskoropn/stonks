@@ -1,15 +1,28 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse
+import os
 from pathlib import Path
 
 import pandas as pd
 
+from paths import PROCESSED_DIR, reports_dir
 
-ROOT = Path(__file__).resolve().parents[1]
-PROCESSED_DIR = ROOT / "data" / "processed"
-REPORTS_ROOT = ROOT / "data" / "reports"
+
+DEFAULT_HOLD_DAYS = 5
+DEFAULT_ALLOW_OVERLAP = False
+STRATEGIES = {
+    "swing": {
+        "input_pattern": "ihsg_swing_indicators_*.csv",
+        "signal_column": "swing_candidate",
+        "strategy_name": "swing",
+    },
+    "macd": {
+        "input_pattern": "ihsg_macd_indicators_*.csv",
+        "signal_column": "macd_candidate",
+        "strategy_name": "macd",
+    },
+}
 
 
 def latest_indicator_file(pattern: str = "ihsg_swing_indicators_*.csv") -> Path:
@@ -207,38 +220,31 @@ def summarize_by_score(trades: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows).sort_values("signal_score", ascending=False)
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Backtest generated screener candidates.")
-    parser.add_argument("--input", type=Path, default=None, help="indicator CSV; default: latest file in data/processed")
-    parser.add_argument("--input-pattern", default="ihsg_swing_indicators_*.csv", help="glob pattern used when --input is omitted")
-    parser.add_argument("--signal-column", default="swing_candidate", help="boolean signal column to backtest")
-    parser.add_argument("--strategy-name", default=None, help="name used in output filenames; default: signal column without _candidate")
-    parser.add_argument("--hold-days", type=int, default=5, help="exit at close N trading days after signal")
-    parser.add_argument("--allow-overlap", action="store_true", help="allow overlapping trades for the same symbol")
-    args = parser.parse_args()
-
-    indicator_path = args.input or latest_indicator_file(args.input_pattern)
-    strategy_name = args.strategy_name or args.signal_column.removesuffix("_candidate")
+def run_backtest(strategy_key: str) -> None:
+    strategy = STRATEGIES[strategy_key]
+    indicator_path = latest_indicator_file(strategy["input_pattern"])
+    strategy_name = strategy["strategy_name"]
+    signal_column = strategy["signal_column"]
     indicators = pd.read_csv(indicator_path)
     trades = build_trades(
         indicators,
-        hold_days=args.hold_days,
-        allow_overlap=args.allow_overlap,
-        signal_column=args.signal_column,
+        hold_days=DEFAULT_HOLD_DAYS,
+        allow_overlap=DEFAULT_ALLOW_OVERLAP,
+        signal_column=signal_column,
     )
     summary = summarize(trades)
     by_symbol = summarize_by_symbol(trades)
     by_score = summarize_by_score(trades)
 
     latest_date = pd.to_datetime(indicators["date"]).max().strftime("%Y-%m-%d")
-    suffix = f"{strategy_name}_{latest_date}_{args.hold_days}d"
-    reports_dir = REPORTS_ROOT / strategy_name
-    trades_path = reports_dir / f"backtest_trades_{suffix}.csv"
-    summary_path = reports_dir / f"backtest_summary_{suffix}.csv"
-    by_symbol_path = reports_dir / f"backtest_by_symbol_{suffix}.csv"
-    by_score_path = reports_dir / f"backtest_by_score_{suffix}.csv"
+    suffix = f"{strategy_name}_{latest_date}_{DEFAULT_HOLD_DAYS}d"
+    output_dir = reports_dir(strategy_name)
+    trades_path = output_dir / f"backtest_trades_{suffix}.csv"
+    summary_path = output_dir / f"backtest_summary_{suffix}.csv"
+    by_symbol_path = output_dir / f"backtest_by_symbol_{suffix}.csv"
+    by_score_path = output_dir / f"backtest_by_score_{suffix}.csv"
 
-    reports_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
     trades.to_csv(trades_path, index=False)
     summary.to_csv(summary_path, index=False)
     by_symbol.to_csv(by_symbol_path, index=False)
@@ -258,6 +264,14 @@ def main() -> None:
             f"avg_return={row['average_return']:.2%}, "
             f"profit_factor={row['profit_factor']:.2f}"
         )
+
+
+def main() -> None:
+    strategy_key = os.environ.get("STONKS_BACKTEST_STRATEGY", "swing")
+    if strategy_key not in STRATEGIES:
+        valid = ", ".join(sorted(STRATEGIES))
+        raise ValueError(f"Unknown backtest strategy: {strategy_key}. Valid strategies: {valid}")
+    run_backtest(strategy_key)
 
 
 if __name__ == "__main__":

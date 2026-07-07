@@ -22,7 +22,6 @@ Options:
   --swing   Build swing screener indicators and reports.
   --macd    Build MACD screener indicators and reports.
   --all     Build all indicator reports.
-  -h, --help
 EOF
 }
 
@@ -32,10 +31,6 @@ if [[ $# -eq 0 ]]; then
 fi
 
 case "${1:-}" in
-  -h|--help)
-    usage
-    exit 0
-    ;;
   --swing|--macd|--all)
     MODE="$1"
     shift
@@ -47,18 +42,24 @@ case "${1:-}" in
     ;;
 esac
 
+if [[ $# -ne 0 ]]; then
+  echo "Unexpected parameter: $1" >&2
+  usage >&2
+  exit 2
+fi
+
 echo "Started: $START_TIME"
 
 case "$MODE" in
   --swing)
-    "$PYTHON_BIN" "$ROOT_DIR/scripts/build_swing_indicators.py" "$@"
+    "$PYTHON_BIN" "$ROOT_DIR/scripts/build_swing_indicators.py"
     ;;
   --macd)
-    "$PYTHON_BIN" "$ROOT_DIR/scripts/build_macd_indicators.py" "$@"
+    "$PYTHON_BIN" "$ROOT_DIR/scripts/build_macd_indicators.py"
     ;;
   --all)
-    "$PYTHON_BIN" "$ROOT_DIR/scripts/build_swing_indicators.py" "$@"
-    "$PYTHON_BIN" "$ROOT_DIR/scripts/build_macd_indicators.py" "$@"
+    "$PYTHON_BIN" "$ROOT_DIR/scripts/build_swing_indicators.py"
+    "$PYTHON_BIN" "$ROOT_DIR/scripts/build_macd_indicators.py"
     ;;
 esac
 

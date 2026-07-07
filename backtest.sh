@@ -14,19 +14,14 @@ fi
 usage() {
   cat <<'EOF'
 Usage:
-  bash backtest.sh --swing [backtest options]
-  bash backtest.sh --macd [backtest options]
-  bash backtest.sh --all [backtest options]
+  bash backtest.sh --swing
+  bash backtest.sh --macd
+  bash backtest.sh --all
 
 Options:
   --swing   Backtest swing_candidate.
   --macd    Backtest macd_candidate.
   --all     Backtest all screeners.
-  -h, --help
-
-Backtest options after the screener flag are passed to scripts/backtest.py.
-Example:
-  bash backtest.sh --swing --hold-days 3
 EOF
 }
 
@@ -36,10 +31,6 @@ if [[ $# -eq 0 ]]; then
 fi
 
 case "${1:-}" in
-  -h|--help)
-    usage
-    exit 0
-    ;;
   --swing|--macd|--all)
     MODE="$1"
     shift
@@ -51,34 +42,32 @@ case "${1:-}" in
     ;;
 esac
 
+if [[ $# -ne 0 ]]; then
+  echo "Unexpected parameter: $1" >&2
+  usage >&2
+  exit 2
+fi
+
 run_swing() {
-  "$PYTHON_BIN" "$ROOT_DIR/scripts/backtest.py" \
-    --input-pattern "ihsg_swing_indicators_*.csv" \
-    --signal-column swing_candidate \
-    --strategy-name swing \
-    "$@"
+  STONKS_BACKTEST_STRATEGY=swing "$PYTHON_BIN" "$ROOT_DIR/scripts/backtest.py"
 }
 
 run_macd() {
-  "$PYTHON_BIN" "$ROOT_DIR/scripts/backtest.py" \
-    --input-pattern "ihsg_macd_indicators_*.csv" \
-    --signal-column macd_candidate \
-    --strategy-name macd \
-    "$@"
+  STONKS_BACKTEST_STRATEGY=macd "$PYTHON_BIN" "$ROOT_DIR/scripts/backtest.py"
 }
 
 echo "Started: $START_TIME"
 
 case "$MODE" in
   --swing)
-    run_swing "$@"
+    run_swing
     ;;
   --macd)
-    run_macd "$@"
+    run_macd
     ;;
   --all)
-    run_swing "$@"
-    run_macd "$@"
+    run_swing
+    run_macd
     ;;
 esac
 

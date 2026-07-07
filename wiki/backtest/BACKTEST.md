@@ -28,31 +28,7 @@ Run all screeners:
 bash backtest.sh --all
 ```
 
-Run with a different holding period:
-
-```bash
-bash backtest.sh --swing --hold-days 3
-```
-
-The shell script calls `scripts/backtest.py`. You can also run the Python implementation directly.
-
-Direct run for the swing screener:
-
-```bash
-./venv/bin/python scripts/backtest.py \
-  --input-pattern "ihsg_swing_indicators_*.csv" \
-  --signal-column swing_candidate \
-  --strategy-name swing
-```
-
-Direct run for the MACD screener:
-
-```bash
-./venv/bin/python scripts/backtest.py \
-  --input-pattern "ihsg_macd_indicators_*.csv" \
-  --signal-column macd_candidate \
-  --strategy-name macd
-```
+The shell script calls `scripts/backtest.py`. The public command surface is intentionally limited to `--swing`, `--macd`, and `--all`.
 
 ## Input
 
@@ -131,11 +107,7 @@ overlapping trades for the same symbol = disabled
 
 If a symbol already has an active trade, new signals for that symbol are ignored until the current trade exits.
 
-To allow overlapping trades:
-
-```bash
-bash backtest.sh --swing --allow-overlap
-```
+This overlap rule is fixed in code for now.
 
 ## Trade Metrics
 

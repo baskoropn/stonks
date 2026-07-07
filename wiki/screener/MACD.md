@@ -136,10 +136,7 @@ data/reports/macd/candidates_<latest-date>.csv
 The same reusable backtest script can test this screener:
 
 ```bash
-./venv/bin/python scripts/backtest.py \
-  --input-pattern "ihsg_macd_indicators_*.csv" \
-  --signal-column macd_candidate \
-  --strategy-name macd
+bash backtest.sh --macd
 ```
 
 Backtest mechanism details are documented in `wiki/backtest/BACKTEST.md`.
