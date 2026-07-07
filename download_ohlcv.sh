@@ -13,9 +13,9 @@ fi
 
 if [[ "${1:-}" != "-h" && "${1:-}" != "--help" ]]; then
   echo "Started: $START_TIME"
-  mkdir -p "$ROOT_DIR/data/raw" "$ROOT_DIR/data/reports"
+  mkdir -p "$ROOT_DIR/data/raw" "$ROOT_DIR/data/reports/download"
   find "$ROOT_DIR/data/raw" -mindepth 1 -delete
-  find "$ROOT_DIR/data/reports" -mindepth 1 -delete
+  find "$ROOT_DIR/data/reports/download" -mindepth 1 -delete
 fi
 
 "$PYTHON_BIN" "$ROOT_DIR/scripts/download_ihsg_2026.py" "$@"

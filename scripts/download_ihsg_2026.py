@@ -191,7 +191,7 @@ def main() -> None:
         }
     )
     status["downloaded"] = status["price_rows"] > 0
-    status_path = ROOT / "data" / "reports" / f"ihsg_download_status_{args.start}_{args.end}.csv"
+    status_path = ROOT / "data" / "reports" / "download" / f"ihsg_download_status_{args.start}_{args.end}.csv"
     status_path.parent.mkdir(parents=True, exist_ok=True)
     status.to_csv(status_path, index=False)
 
